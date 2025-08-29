@@ -44,6 +44,8 @@ func main() {
 	// Auth endpoints
 	auth := router.Group("/auth")
 	{
+		auth.GET("/youtube/url", authHandler.GetYouTubeAuthURL)
+		auth.POST("/youtube/callback", authHandler.CompleteYouTubeAuth)
 		auth.POST("/youtube", authHandler.AuthenticateYouTube)
 	}
 
@@ -54,6 +56,7 @@ func main() {
 		// Playlist endpoints
 		api.GET("/playlists", playlistHandler.GetPlaylists)
 		api.GET("/playlists/:id", playlistHandler.GetPlaylistByID)
+		api.GET("/playlists/:id/songs", playlistHandler.GetPlaylistSongs)
 
 		// Export endpoints
 		api.POST("/export/:id", exportHandler.ExportPlaylist)

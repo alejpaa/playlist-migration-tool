@@ -102,3 +102,55 @@ func (h *PlaylistHandler) GetPlaylistByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+// GetPlaylistSongs handles GET /playlists/:id/songs
+func (h *PlaylistHandler) GetPlaylistSongs(c *gin.Context) {
+	// Get access token from context
+	accessToken, exists := c.Get("access_token")
+	if !exists {
+		apiErr := models.NewUnauthorizedError("Debes iniciar sesión en YouTube para acceder a las canciones.", nil)
+		c.JSON(apiErr.StatusCode, apiErr.ToErrorResponse())
+		return
+	}
+
+	accessTokenStr, ok := accessToken.(string)
+	if !ok {
+		apiErr := models.NewUnauthorizedError("Debes iniciar sesión en YouTube para acceder a las canciones.", nil)
+		c.JSON(apiErr.StatusCode, apiErr.ToErrorResponse())
+		return
+	}
+
+	// Get playlist ID from URL parameter
+	playlistID := c.Param("id")
+	if playlistID == "" {
+		apiErr := models.NewBadRequestError("Playlist ID is required", nil)
+		c.JSON(apiErr.StatusCode, apiErr.ToErrorResponse())
+		return
+	}
+
+	// Parse query parameters
+	maxResults := 50 // default
+	if mr := c.Query("max_results"); mr != "" {
+		if parsed, err := strconv.Atoi(mr); err == nil && parsed > 0 && parsed <= 50 {
+			maxResults = parsed
+		}
+	}
+
+	// Get playlist songs
+	songs, err := h.playlistService.GetPlaylistSongs(accessTokenStr, playlistID, maxResults)
+	if err != nil {
+		if apiErr, ok := err.(*models.APIError); ok {
+			c.JSON(apiErr.StatusCode, apiErr.ToErrorResponse())
+		} else {
+			apiErr := models.NewInternalServerError("Failed to fetch playlist songs", err)
+			c.JSON(apiErr.StatusCode, apiErr.ToErrorResponse())
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"songs":       songs,
+		"total_count": len(songs),
+		"playlist_id": playlistID,
+	})
+}
